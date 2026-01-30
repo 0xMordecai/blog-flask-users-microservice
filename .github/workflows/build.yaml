@@ -1,0 +1,26 @@
+name: Build and Test Users Microservice
+on:
+  push:
+    branches: [main,dev]
+  pull_request:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Grype
+        id: install-grype
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sudo sh -s -- -b /usr/local/bin
+      - name: Login to Docker Hub
+        id: Login
+        run: docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build the Docker image
+        id: build
+        run: docker build . --file Dockerfile --tag ${{ secrets.DOCKER_USER }}/blog-users:$(git rev-parse --short "$GITHUB_SHA")
+      - name: Scan Image for vulnerabilities
+        id: vuln-scanning
+        run: grype -f critical ${{ secrets.DOCKER_USER }}/blog-users:$(git rev-parse --short "$GITHUB_SHA")
+      - name: Push the Docker image
+        id: push
+        run: docker push ${{ secrets.DOCKER_USER }}/blog-users:$(git rev-parse --short "$GITHUB_SHA")
